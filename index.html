@@ -80,6 +80,16 @@ button[aria-pressed="true"]{background:var(--gold);color:var(--night);border-col
 .scroll h2{font-family:var(--display);font-style:normal;font-size:1.25rem;margin:0;color:#5a3d14;text-wrap:balance}
 #stagemsg{font-family:var(--display);font-weight:700;color:var(--gold);font-size:clamp(1.15rem,4.5vw,1.5rem);text-align:center;margin:0;min-height:1.4em;text-shadow:0 0 12px rgba(255,207,110,.45)}
 #music{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);right:max(12px,calc(env(safe-area-inset-right,0px) + 12px));z-index:20;font-size:13px;padding:6px 10px;background:rgba(44,40,64,.85)}
+#replay{font:inherit;font-family:var(--display);font-size:17px;font-weight:700;min-height:44px;padding:9px 24px;border-radius:999px;background:transparent;color:var(--gold);border:1px solid var(--gold);cursor:pointer;box-shadow:0 0 16px rgba(255,207,110,.3)}
+#replay[hidden],.admin[hidden]{display:none}
+/* hidden admin door: tap the "Circle 1 of 3" label three times */
+.admin{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(15,13,26,.86);padding:0 16px}
+.acard{width:min(100%,320px);background:var(--stone);border:1px solid var(--stone2);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px}
+.acard label{font-family:var(--display);font-size:18px;color:var(--gold)}
+.acard input{font:inherit;font-size:18px;padding:8px 10px;border-radius:8px;border:1px solid var(--stone2);background:var(--night);color:var(--bone)}
+.arow{display:flex;gap:8px;justify-content:flex-end}
+.arow button{font:inherit;font-size:16px;min-height:44px;padding:6px 16px;border-radius:999px;border:1px solid var(--gold);background:transparent;color:var(--bone);cursor:pointer}
+.acard p{margin:0;min-height:1.2em;font-size:15px;color:#ff9a8a;font-style:italic}
 #next{background:var(--gold);color:var(--night);border-color:var(--gold);font-weight:700;font-size:16px;padding:9px 18px}
 .bandfill{fill:var(--stone);transition:fill .25s;cursor:pointer}
 .ring:nth-of-type(even) .bandfill{fill:#332e4a}
@@ -110,6 +120,13 @@ button[aria-pressed="true"]{background:var(--gold);color:var(--night);border-col
     <button id="music" aria-pressed="false">♪ Music: off</button>
   </div>
   <p id="coords"></p>
+  <button id="replay" type="button" hidden>↺ Replay</button>
+  <div class="admin" id="admin" hidden><div class="acard" role="dialog" aria-modal="true" aria-labelledby="apwl">
+    <label id="apwl" for="apw">Password</label>
+    <input id="apw" type="password" autocomplete="off">
+    <p id="aerr" role="status"></p>
+    <div class="arow"><button id="acancel" type="button">Cancel</button><button id="aok" type="button">Open</button></div>
+  </div></div>
 </div>
 
 <script>
@@ -136,7 +153,9 @@ function litCount(r){
 }
 function scramble(){const n=LV().n;let r;do{r=Array.from({length:n},()=>Math.floor(Math.random()*12));}while(litCount(r)>0);return r;}
 
-try{const s=JSON.parse(localStorage.getItem(SAVE));
+// every visit starts from the first level
+try{localStorage.removeItem(SAVE);}catch(e){}
+try{const s=null;
   if(s&&Number.isInteger(s.level)&&s.level>=0&&s.level<3&&Array.isArray(s.rot)&&s.rot.length===DATA.levels[s.level].n){level=s.level;rot=s.rot;turns=s.turns|0;done=Array.isArray(s.done)?s.done.slice(0,level):[];}
 }catch(e){}
 if(!rot.length)rot=scramble();
@@ -173,7 +192,7 @@ function render(){
   rot.forEach((r,k)=>{const g=document.getElementById('ring'+k);g.style.transform=`rotate(${r*30}deg)`;g.classList.toggle('lit',k>=n-c);});
   return c===n;
 }
-function save(){try{localStorage.setItem(SAVE,JSON.stringify({level,rot,turns,done}));}catch(e){}}
+function save(){}
 function setControls(on){document.querySelectorAll('#controls button').forEach(b=>b.disabled=!on);}
 
 function turn(k,dir){
@@ -204,15 +223,41 @@ svg.addEventListener('click',e=>{
 });
 
 /* Audio: background music is off until switched on */
-let ac=null,master=null,timer=null,step=0;
+let ac=null,master=null;
 const hz=n=>440*Math.pow(2,(n-69)/12);
 function ensureAudio(){if(!ac){const A=window.AudioContext||window.webkitAudioContext;ac=new A();master=ac.createGain();master.gain.value=0;master.connect(ac.destination);}return ac;}
 function tone(f,t,d,type,vol,dest){const o=ac.createOscillator(),g=ac.createGain();o.type=type;o.frequency.value=f;g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(vol,t+.02);g.gain.exponentialRampToValueAtTime(.0001,t+d);o.connect(g).connect(dest||master);o.start(t);o.stop(t+d+.05);}
-const mel=[62,65,69,68,62,65,67,66,62,65,69,72,71,68,67,65];
-function tick(){const t=ac.currentTime+.05;tone(hz(mel[step%mel.length]),t,1,'triangle',.2);if(step%8===0)tone(hz(38),t,3.8,'sine',.3);step++;}
+// background music: the same spooky music box as Midnight Pairs (drone, wind and a slow melody), off until switched on
+const Music=(function(){
+  let ac2,mst,dry,wet,nb,tmr=null,on=false,nextT=0,st=0,bar=0,nextEvt=0;
+  const PH_A=[76,72,69,71,72,76,81,80,76,72,71,69],PH_B=[77,76,74,72,71,0,69,0,76,0,75,0];
+  function impulse(sec,decay){const len=Math.floor(ac2.sampleRate*sec),b=ac2.createBuffer(2,len,ac2.sampleRate);for(let c=0;c<2;c++){const d=b.getChannelData(c);for(let i=0;i<len;i++)d[i]=(Math.random()*2-1)*Math.pow(1-i/len,decay);}return b;}
+  function send(g){g.connect(dry);g.connect(wet);}
+  function init(){ac2=new (window.AudioContext||window.webkitAudioContext)();mst=ac2.createGain();mst.gain.value=0;mst.connect(ac2.destination);
+    dry=ac2.createGain();dry.gain.value=.7;dry.connect(mst);const conv=ac2.createConvolver();conv.buffer=impulse(3.2,2.4);wet=ac2.createGain();wet.gain.value=.55;wet.connect(conv);conv.connect(mst);
+    nb=ac2.createBuffer(1,ac2.sampleRate*4,ac2.sampleRate);const nd=nb.getChannelData(0);for(let i=0;i<nd.length;i++)nd[i]=Math.random()*2-1;
+    // drone
+    {const g=ac2.createGain();g.gain.value=.10;const lp=ac2.createBiquadFilter();lp.type='lowpass';lp.frequency.value=260;lp.Q.value=4;
+     [[55,'sawtooth',0],[55,'sawtooth',7],[82.41,'sine',0],[110,'triangle',-5]].forEach(p=>{const o=ac2.createOscillator();o.type=p[1];o.frequency.value=p[0];o.detune.value=p[2];o.connect(lp);o.start();});
+     const lfo=ac2.createOscillator(),lg=ac2.createGain();lfo.frequency.value=.07;lg.gain.value=110;lfo.connect(lg);lg.connect(lp.frequency);lfo.start();lp.connect(g);send(g);}
+    // wind
+    {const s=ac2.createBufferSource();s.buffer=nb;s.loop=true;const bp=ac2.createBiquadFilter();bp.type='bandpass';bp.frequency.value=420;bp.Q.value=.8;const g=ac2.createGain();g.gain.value=.05;
+     const lfo=ac2.createOscillator(),lg=ac2.createGain();lfo.frequency.value=.11;lg.gain.value=260;lfo.connect(lg);lg.connect(bp.frequency);lfo.start();s.connect(bp);bp.connect(g);send(g);s.start();}}
+  function box(m,t,len){const f=hz(m);[[1,.20],[2,.06],[2.76,.025],[4.1,.012]].forEach(p=>{const o=ac2.createOscillator(),g=ac2.createGain();o.type='sine';o.frequency.value=f*p[0];
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(p[1],t+.006);g.gain.exponentialRampToValueAtTime(.0001,t+len/Math.pow(p[0],.3));o.connect(g);send(g);o.start(t);o.stop(t+len+.1);});}
+  function toll(t){[[110,.18,7],[263,.07,5],[407,.035,4]].forEach(p=>{const o=ac2.createOscillator(),g=ac2.createGain();o.type='sine';o.frequency.value=p[0];g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(p[1],t+.01);g.gain.exponentialRampToValueAtTime(.0001,t+p[2]);o.connect(g);send(g);o.start(t);o.stop(t+p[2]+.1);});}
+  function swoop(t){const o=ac2.createOscillator(),g=ac2.createGain(),v=ac2.createOscillator(),vg=ac2.createGain();o.type='sine';o.frequency.setValueAtTime(520,t);o.frequency.exponentialRampToValueAtTime(980,t+3.5);v.frequency.value=5.5;vg.gain.value=14;v.connect(vg);vg.connect(o.frequency);
+    g.gain.setValueAtTime(0,t);g.gain.linearRampToValueAtTime(.05,t+1.6);g.gain.linearRampToValueAtTime(0,t+3.6);o.connect(g);send(g);o.start(t);v.start(t);o.stop(t+3.8);v.stop(t+3.8);}
+  function pump(){while(nextT<ac2.currentTime+.5){const sq=(bar%3===2)?PH_B:PH_A;const m=sq[st];if(m)box(m-(Math.random()<.18?12:0),nextT,2.2);nextT+=.34*(sq===PH_B?1.5:1);st++;if(st>=sq.length){st=0;bar++;nextT+=.9;}}
+    if(ac2.currentTime>nextEvt){const t=ac2.currentTime+.05;if(Math.random()<.5)swoop(t);else toll(t);nextEvt=ac2.currentTime+9+Math.random()*10;}}
+  return{isOn:()=>on,toggle:function(){
+    if(!on){if(!ac2)init();ac2.resume();on=true;nextT=ac2.currentTime+.3;st=0;bar=0;nextEvt=ac2.currentTime+6;tmr=setInterval(pump,120);mst.gain.cancelScheduledValues(ac2.currentTime);mst.gain.setTargetAtTime(.75,ac2.currentTime,.8);}
+    else{on=false;clearInterval(tmr);mst.gain.setTargetAtTime(0,ac2.currentTime,.25);setTimeout(()=>{if(!on&&ac2)ac2.suspend();},1400);}
+    return on;}};
+})();
 const mb=document.getElementById('music');
-function musicOff(){if(timer){clearInterval(timer);timer=null;master.gain.setTargetAtTime(0,ac.currentTime,.1);}mb.textContent='♪ Music: off';mb.setAttribute('aria-pressed','false');}
-mb.onclick=async()=>{try{ensureAudio();if(timer){musicOff();}else{await ac.resume();master.gain.setTargetAtTime(.25,ac.currentTime,.1);tick();timer=setInterval(tick,480);mb.textContent='♪ Music: on';mb.setAttribute('aria-pressed','true');}}catch(e){mb.textContent='♪ Music unavailable';}};
+function musicOff(){if(Music.isOn())Music.toggle();mb.textContent='♪ Music: off';mb.setAttribute('aria-pressed','false');}
+mb.onclick=()=>{try{const o=Music.toggle();mb.textContent=o?'♪ Music: on':'♪ Music: off';mb.setAttribute('aria-pressed',String(o));}catch(e){mb.textContent='♪ Music unavailable';}};
 function bell(f,t,vol,dest){[[1,1],[2.76,.45],[5.4,.2]].forEach(([m,a])=>tone(f*m,t,3.2/m+.4,'sine',vol*a,dest));}
 function out(){const v=ac.createGain();v.gain.value=.32;v.connect(ac.destination);return v;}
 function sealChime(){try{ensureAudio();ac.resume();const v=out(),t=ac.currentTime+.05;[71,76,79].forEach((n,i)=>bell(hz(n),t+i*.22,.28,v));}catch(e){}}
@@ -230,7 +275,25 @@ function finale(user){
       s.style.animation=`rise ${2.6+Math.random()*1.4}s ease-out ${0.5+i*0.12}s forwards`;stage.appendChild(s);setTimeout(()=>s.remove(),6000);}
     coords.classList.remove('show');void coords.offsetWidth;coords.classList.add('show');
   }
+  setTimeout(()=>{if(finished)document.getElementById('replay').hidden=false;},user?4200:0);
 }
+// replay appears only once all three circles are mended, and always starts again from the first circle
+function restart(){level=0;done=[];turns=0;sealed=false;finished=false;rot=scramble();nextBtn.hidden=true;msg.textContent='';
+  stage.classList.remove('sealed','solved');coords.innerHTML='';coords.classList.remove('show');document.getElementById('replay').hidden=true;
+  build();render();setControls(true);updatePips();}
+document.getElementById('replay').onclick=()=>{restart();window.scrollTo({top:0,behavior:'smooth'});};
+// admin door: three quick taps on the "Circle … of 3" label ask for the password; the right one mends every circle and plays the ending
+const ADMIN=217580182;let lblTaps=[];
+function adminHash(t){let h=2166136261;t="jar-admin|"+t;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return h>>>0;}
+function solveCircle(i){const L=DATA.levels[i],acc=[],r=[];for(let k=L.n-1;k>=0;k--){for(let v=0;v<12;v++){if(cyrb53(`sigil-L${i+1}:`+[...acc,v].join(','),100+i*10+k)===L.chain[L.n-1-k]){acc.push(v);r[k]=v;break;}}}return r;}
+document.getElementById('levelname').addEventListener('pointerdown',()=>{const now=performance.now();lblTaps=lblTaps.filter(t=>now-t<1500);lblTaps.push(now);
+  if(lblTaps.length>=3){lblTaps=[];document.getElementById('aerr').textContent='';document.getElementById('apw').value='';document.getElementById('admin').hidden=false;setTimeout(()=>document.getElementById('apw').focus(),0);}});
+function adminTry(){if(adminHash(document.getElementById('apw').value)!==ADMIN){document.getElementById('aerr').textContent="That's not it.";document.getElementById('apw').select();return;}
+  document.getElementById('admin').hidden=true;restart();
+  for(let i=0;i<2;i++)done[i]=`L${i+1}:`+solveCircle(i).join(',');
+  level=2;rot=solveCircle(2);build();if(render())complete(true);}
+document.getElementById('aok').onclick=adminTry;document.getElementById('acancel').onclick=()=>{document.getElementById('admin').hidden=true;};
+document.getElementById('apw').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();adminTry();}else if(e.key==='Escape')document.getElementById('admin').hidden=true;});
 build();if(render())complete(false);
 </script>
 
