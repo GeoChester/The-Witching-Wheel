@@ -1,4 +1,4 @@
-<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html lang="en"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>The Witching Wheel</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -81,15 +81,7 @@ button[aria-pressed="true"]{background:var(--gold);color:var(--night);border-col
 #stagemsg{font-family:var(--display);font-weight:700;color:var(--gold);font-size:clamp(1.15rem,4.5vw,1.5rem);text-align:center;margin:0;min-height:1.4em;text-shadow:0 0 12px rgba(255,207,110,.45)}
 #music{position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 12px);right:max(12px,calc(env(safe-area-inset-right,0px) + 12px));z-index:20;font-size:13px;padding:6px 10px;background:rgba(44,40,64,.85)}
 #replay{font:inherit;font-family:var(--display);font-size:17px;font-weight:700;min-height:44px;padding:9px 24px;border-radius:999px;background:transparent;color:var(--gold);border:1px solid var(--gold);cursor:pointer;box-shadow:0 0 16px rgba(255,207,110,.3)}
-#replay[hidden],.admin[hidden]{display:none}
-/* hidden admin door: tap the "Circle 1 of 3" label three times */
-.admin{position:fixed;inset:0;z-index:40;display:flex;align-items:center;justify-content:center;background:rgba(15,13,26,.86);padding:0 16px}
-.acard{width:min(100%,320px);background:var(--stone);border:1px solid var(--stone2);border-radius:14px;padding:18px;display:flex;flex-direction:column;gap:10px}
-.acard label{font-family:var(--display);font-size:18px;color:var(--gold)}
-.acard input{font:inherit;font-size:18px;padding:8px 10px;border-radius:8px;border:1px solid var(--stone2);background:var(--night);color:var(--bone)}
-.arow{display:flex;gap:8px;justify-content:flex-end}
-.arow button{font:inherit;font-size:16px;min-height:44px;padding:6px 16px;border-radius:999px;border:1px solid var(--gold);background:transparent;color:var(--bone);cursor:pointer}
-.acard p{margin:0;min-height:1.2em;font-size:15px;color:#ff9a8a;font-style:italic}
+#replay[hidden]{display:none}
 #next{background:var(--gold);color:var(--night);border-color:var(--gold);font-weight:700;font-size:16px;padding:9px 18px}
 .bandfill{fill:var(--stone);transition:fill .25s;cursor:pointer}
 .ring:nth-of-type(even) .bandfill{fill:#332e4a}
@@ -121,12 +113,6 @@ button[aria-pressed="true"]{background:var(--gold);color:var(--night);border-col
   </div>
   <p id="coords"></p>
   <button id="replay" type="button" hidden>↺ Replay</button>
-  <div class="admin" id="admin" hidden><div class="acard" role="dialog" aria-modal="true" aria-labelledby="apwl">
-    <label id="apwl" for="apw">Password</label>
-    <input id="apw" type="password" autocomplete="off">
-    <p id="aerr" role="status"></p>
-    <div class="arow"><button id="acancel" type="button">Cancel</button><button id="aok" type="button">Open</button></div>
-  </div></div>
 </div>
 
 <script>
@@ -282,18 +268,6 @@ function restart(){level=0;done=[];turns=0;sealed=false;finished=false;rot=scram
   stage.classList.remove('sealed','solved');coords.innerHTML='';coords.classList.remove('show');document.getElementById('replay').hidden=true;
   build();render();setControls(true);updatePips();}
 document.getElementById('replay').onclick=()=>{restart();window.scrollTo({top:0,behavior:'smooth'});};
-// admin door: three quick taps on the "Circle … of 3" label ask for the password; the right one mends every circle and plays the ending
-const ADMIN=217580182;let lblTaps=[];
-function adminHash(t){let h=2166136261;t="jar-admin|"+t;for(let i=0;i<t.length;i++){h^=t.charCodeAt(i);h=Math.imul(h,16777619)>>>0;}return h>>>0;}
-function solveCircle(i){const L=DATA.levels[i],acc=[],r=[];for(let k=L.n-1;k>=0;k--){for(let v=0;v<12;v++){if(cyrb53(`sigil-L${i+1}:`+[...acc,v].join(','),100+i*10+k)===L.chain[L.n-1-k]){acc.push(v);r[k]=v;break;}}}return r;}
-document.getElementById('levelname').addEventListener('pointerdown',()=>{const now=performance.now();lblTaps=lblTaps.filter(t=>now-t<1500);lblTaps.push(now);
-  if(lblTaps.length>=3){lblTaps=[];document.getElementById('aerr').textContent='';document.getElementById('apw').value='';document.getElementById('admin').hidden=false;setTimeout(()=>document.getElementById('apw').focus(),0);}});
-function adminTry(){if(adminHash(document.getElementById('apw').value)!==ADMIN){document.getElementById('aerr').textContent="That's not it.";document.getElementById('apw').select();return;}
-  document.getElementById('admin').hidden=true;restart();
-  for(let i=0;i<2;i++)done[i]=`L${i+1}:`+solveCircle(i).join(',');
-  level=2;rot=solveCircle(2);build();if(render())complete(true);}
-document.getElementById('aok').onclick=adminTry;document.getElementById('acancel').onclick=()=>{document.getElementById('admin').hidden=true;};
-document.getElementById('apw').addEventListener('keydown',e=>{if(e.key==='Enter'){e.preventDefault();adminTry();}else if(e.key==='Escape')document.getElementById('admin').hidden=true;});
 build();if(render())complete(false);
 </script>
 
