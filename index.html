@@ -1,4 +1,4 @@
-<!doctype html><html lang="en"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <title>The Witching Wheel</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -92,7 +92,57 @@ button[aria-pressed="true"]{background:var(--gold);color:var(--night);border-col
 .solved .sig{stroke:#ffe39a}
 .controls.four{grid-template-columns:repeat(2,auto)}
 @media (max-width:440px){.controls.four{grid-template-columns:1fr}}
+.cloak{position:fixed;inset:0;z-index:100;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  background:radial-gradient(ellipse at 50% 40%,#2a2340 0%,#141022 55%,#0b0914 100%);
+  transition:opacity 5s ease-in,transform 6s ease-in,filter 5s ease-in}
+.cloak.lift{opacity:0;transform:translateY(-8%) scale(1.06);filter:blur(10px);pointer-events:none}
+.fog{position:absolute;border-radius:50%;pointer-events:none;filter:blur(40px);
+  background:radial-gradient(circle,rgba(185,172,217,.30) 0%,rgba(150,135,190,.14) 45%,transparent 70%)}
+.fog.a{width:90vmax;height:60vmax;left:-30vmax;top:-10vmax;animation:drift1 26s ease-in-out infinite alternate}
+.fog.b{width:80vmax;height:55vmax;right:-30vmax;bottom:-15vmax;animation:drift2 32s ease-in-out infinite alternate}
+.fog.c{width:70vmax;height:45vmax;left:10vmax;bottom:-20vmax;opacity:.8;animation:drift3 22s ease-in-out infinite alternate}
+.fog.d{width:60vmax;height:40vmax;right:5vmax;top:-18vmax;opacity:.7;animation:drift1 29s ease-in-out infinite alternate-reverse}
+@keyframes drift1{to{transform:translate(18vmax,6vmax) scale(1.15)}}
+@keyframes drift2{to{transform:translate(-20vmax,-5vmax) scale(1.1)}}
+@keyframes drift3{to{transform:translate(12vmax,-8vmax) scale(1.2)}}
+.cloak.lift .fog{transition:transform 6s ease-in,opacity 5s ease-in;opacity:0}
+.cloak.lift .fog.a,.cloak.lift .fog.d{transform:translateY(-40vh) scale(1.3)}
+.cloak.lift .fog.b,.cloak.lift .fog.c{transform:translateY(-55vh) scale(1.4)}
+.notice{position:relative;max-width:30em;text-align:center;padding:30px 26px;border-radius:16px;
+  background:rgba(20,16,34,.55);border:1px solid rgba(255,207,110,.35);box-shadow:0 0 40px rgba(255,207,110,.12);animation:appear 2.4s ease-out both}
+@keyframes appear{from{opacity:0;filter:blur(8px);transform:translateY(12px)}to{opacity:1;filter:none;transform:none}}
+.notice .eyes{display:block;width:88px;height:88px;margin:0 auto 6px}
+.notice .eyes ellipse.glow{animation:blink 6s infinite}
+@keyframes blink{0%,46%,50%,100%{transform:scaleY(1)}48%{transform:scaleY(.1)}}
+.notice .eyes ellipse.glow{transform-box:fill-box;transform-origin:center}
+.notice .kicker{margin:0 0 6px;font-size:13px;letter-spacing:.18em;text-transform:uppercase;color:var(--ash)}
+.notice h2{margin:0 0 14px;font-family:var(--display);font-weight:700;font-size:clamp(1.4rem,5.5vw,2rem);line-height:1.15;color:var(--gold);text-shadow:0 0 16px rgba(255,207,110,.45);text-wrap:balance}
+.notice p.msg{margin:0 0 12px;font-size:clamp(1.05rem,4.2vw,1.2rem);line-height:1.6;color:var(--bone)}
+.notice p.sign{margin:14px 0 0;font-family:var(--display);font-size:1.1rem;color:var(--ember)}
+.notice p.count{margin:16px auto 0;width:2.6em;height:2.6em;line-height:2.6em;border-radius:50%;border:1px solid rgba(255,207,110,.4);font-family:var(--display);font-weight:700;font-size:1.1rem;color:var(--gold);font-variant-numeric:tabular-nums;text-shadow:0 0 10px rgba(255,207,110,.5)}
+.notice .skip{margin-top:14px;font-family:var(--body);font-size:14px;letter-spacing:.06em;color:var(--ash);background:transparent;border:1px solid rgba(185,172,217,.35);border-radius:999px;padding:7px 18px;cursor:pointer}
+.notice .skip:hover{color:var(--bone);border-color:var(--gold)}
+@media (prefers-reduced-motion:reduce){.fog,.notice,.notice .eyes ellipse.glow{animation:none}.cloak{transition:opacity 1.5s}.cloak.lift{transform:none;filter:none}}
 </style>
+
+<div class="cloak" id="cloak" role="dialog" aria-modal="true" aria-labelledby="cloakTitle">
+  <div class="fog a"></div><div class="fog b"></div><div class="fog c"></div><div class="fog d"></div>
+  <div class="notice">
+    <svg class="eyes" viewBox="0 0 64 64" aria-hidden="true">
+      <path d="M20 56c-3-8-2-17 4-23-2-3-3-6-3-10l-2-11 8 7c2-1 4-1 6 0l8-7-2 11c0 4-1 7-3 10 6 6 7 15 4 23z" fill="#1a1527" stroke="#8a67b5" stroke-width="1.4" stroke-linejoin="round"/>
+      <ellipse class="glow" cx="27.5" cy="22" rx="2.6" ry="3.2" fill="#ffcf6e"/><ellipse class="glow" cx="36.5" cy="22" rx="2.6" ry="3.2" fill="#ffcf6e"/>
+      <path d="M46 54c8 0 12-6 10-12-1-4-5-5-7-3" fill="none" stroke="#1a1527" stroke-width="5" stroke-linecap="round"/>
+    </svg>
+    <p class="kicker">A decree from the moonlit rooftops</p>
+    <h2 id="cloakTitle">To all of Chester's Minions</h2>
+    <p class="msg">Keep those paws busy and your lanterns lit, my loyal helpers. Halloween is creeping closer with every tick of the clock!</p>
+    <p class="msg">Every puzzle you crack fills my treat bag a little fuller. So no napping on the windowsill, no chasing your own tails &ndash; back to work, before the moon catches you dawdling.</p>
+    <p class="sign">&mdash; Chester &#128062;</p>
+    <p class="count" id="cloakCount" aria-hidden="true">30</p>
+    <button class="skip" id="cloakSkip" type="button">Tap to continue</button>
+  </div>
+</div>
 
 <div class="wrap">
   <div class="levelbar"><span id="levelname">Circle 1 of 3</span><span class="pips" id="pips"></span></div>
@@ -269,6 +319,22 @@ function restart(){level=0;done=[];turns=0;sealed=false;finished=false;rot=scram
   build();render();setControls(true);updatePips();}
 document.getElementById('replay').onclick=()=>{restart();window.scrollTo({top:0,behavior:'smooth'});};
 build();if(render())complete(false);
+</script>
+<script>
+(function(){
+  const cloak=document.getElementById('cloak');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const count=document.getElementById('cloakCount'),end=Date.now()+30000;
+  let lifted=false;
+  const tick=setInterval(()=>{const left=Math.max(0,Math.ceil((end-Date.now())/1000));count.textContent=left;if(!left)clearInterval(tick);},250);
+  function lift(){
+    if(lifted)return;lifted=true;clearInterval(tick);clearTimeout(timer);
+    cloak.classList.add('lift');
+    setTimeout(()=>cloak.remove(),reduce?1600:6200);
+  }
+  const timer=setTimeout(lift,30000);
+  document.getElementById('cloakSkip').addEventListener('click',lift);
+})();
 </script>
 
 </body></html>
